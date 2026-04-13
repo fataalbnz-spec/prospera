@@ -1964,7 +1964,7 @@ function renderMovimientos() {
       if (tx.debtId) { const d=state.debts.find(x=>String(x.id)===tx.debtId); ci=d?{color:'#f5c8d8',emoji:'💳',label:'Abono: '+d.name}:getCat(tx.category); }
       else if (tx.goalId) { const g=state.goals.find(x=>x.id===tx.goalId); ci=g?{color:'#e8d8f8',emoji:'🌟',label:'Meta: '+g.name}:getCat(tx.category); }
       else ci=getCat(tx.category);
-      return `<div class="txc">
+      return `<div class="txc" style="background:${ci.color}22;border-radius:8px;padding:9px 10px;margin-bottom:4px">
         <div class="txc-dot" style="background:${ci.color}"></div>
         <div class="txc-info">
           <div class="txc-desc">${esc(tx.desc)}</div>
@@ -1978,7 +1978,7 @@ function renderMovimientos() {
       </div>`;
     }).join('')}</div>`;
   } else {
-    // Vista "todo": agrupar por categoría
+    // Vista "todo": agrupar por categoría, cada grupo con su color
     const groups = {};
     filtered.forEach(tx => {
       let key, ci;
@@ -1990,13 +1990,13 @@ function renderMovimientos() {
       groups[key].total += tx.amount;
     });
     lOut.innerHTML = Object.values(groups).sort((a,b)=>b.total-a.total).map(g => `
-      <div class="tx-group">
-        <div class="tx-group-hdr">
+      <div class="tx-group" style="border-color:${g.ci.color};border-left:4px solid ${g.ci.color};background:${g.ci.color}10">
+        <div class="tx-group-hdr" style="background:${g.ci.color}30;margin:-12px -14px 10px;padding:10px 14px;border-radius:12px 12px 0 0">
           <span class="tx-group-emoji">${g.ci.emoji}</span>
           <span class="tx-group-name">${esc(g.ci.label)}</span>
           <span class="tx-group-total">-${fCOP(g.total)}</span>
         </div>
-        ${g.txs.sort((a,b)=>b.date.localeCompare(a.date)).map(tx=>`<div class="txc">
+        ${g.txs.sort((a,b)=>b.date.localeCompare(a.date)).map(tx=>`<div class="txc" style="border-bottom:1px solid ${g.ci.color}30">
           <div class="txc-dot" style="background:${g.ci.color}"></div>
           <div class="txc-info">
             <div class="txc-desc">${esc(tx.desc)}</div>
@@ -2166,7 +2166,7 @@ function renderDebts() {
     const cat  = getCat(d.category);
     const urg  = done ? { html: '' } : urgencyBadge(d.deadline);
     const priorityNum = done ? '' : (idx + 1);
-    return `<div class="dcard${done?' paid':''}">
+    return `<div class="dcard${done?' paid':''}" style="${done?'':'border-left:4px solid '+cat.color+';background:'+cat.color+'12'}">
       <div class="dc-hdr">
         <div style="flex:1;min-width:0">
           <div class="debt-priority">
@@ -2224,7 +2224,7 @@ function renderPendings() {
     const cat  = getCat(p.category);
     const urg  = done ? { html: '' } : urgencyBadge(p.deadline);
     const priorityNum = done ? '' : (idx + 1);
-    return `<div class="dcard pend${done?' paid':''}">
+    return `<div class="dcard pend${done?' paid':''}" style="${done?'':'border-left:4px solid '+cat.color+';background:'+cat.color+'12'}">
       <div class="dc-hdr">
         <div style="flex:1;min-width:0">
           <div class="debt-priority">
