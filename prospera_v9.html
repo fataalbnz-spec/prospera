@@ -132,11 +132,13 @@ body{background:#f5f0eb;font-family:'Inter',sans-serif;color:#4a3f35}
 .gc-hdr{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:14px}
 .gc-name{font-family:'Playfair Display',serif;font-size:1.15rem;color:#3a2e26}
 /* img upload in form */
-.goal-img-zone{border:2px dashed #d4c0e0;border-radius:12px;padding:14px;text-align:center;cursor:pointer;transition:all .2s;margin-bottom:4px}
-.goal-img-zone:hover{border-color:#c9a8d4;background:#fdf5ff}
-.goal-img-zone.has-img{border-style:solid;border-color:#c9a8d4;padding:6px}
-.goal-img-preview{width:100%;max-height:140px;object-fit:cover;border-radius:8px;display:block}
-.goal-img-hint{font-size:.75rem;color:#b0a0c0;margin-top:4px}
+.goal-img-drag-zone{width:100%;height:150px;border-radius:12px;overflow:hidden;border:2px dashed #d4c0e0;background-color:#fdf5ff;background-size:cover;background-repeat:no-repeat;background-position:50% 50%;cursor:pointer;position:relative;touch-action:none;user-select:none;transition:border-color .2s}
+.goal-img-drag-zone.has-img{border:2px solid #c9a8d4;cursor:grab}
+.goal-img-drag-zone.has-img:active{cursor:grabbing}
+.goal-img-drag-zone:not(.has-img):hover{border-color:#c9a8d4;background-color:#f8f0ff}
+.goal-img-empty{width:100%;height:100%;display:flex;align-items:center;justify-content:center;gap:6px;color:#b0a0c0;font-size:.82rem}
+.goal-img-move-hint{position:absolute;bottom:8px;left:50%;transform:translateX(-50%);background:rgba(0,0,0,.5);color:#fff;font-size:.66rem;padding:3px 10px;border-radius:20px;pointer-events:none;white-space:nowrap;opacity:1;transition:opacity .3s}
+.goal-img-hint{font-size:.72rem;color:#b0a0c0;margin-top:4px}
 .gc-dl{font-size:.68rem;color:#a08070;margin-top:3px}
 .gc-acts{display:flex;gap:6px}
 .act-btn{background:#fdf5f0;border:1px solid #edddd5;color:#a08070;cursor:pointer;font-size:.78rem;padding:4px 10px;border-radius:8px;font-family:'Inter',sans-serif}
@@ -960,13 +962,20 @@ body{background:#f5f0eb;font-family:'Inter',sans-serif;color:#4a3f35}
   <div class="m-title" id="m-goal-title">Nueva meta</div>
   <div class="field">
     <label>Imagen de inspiración (opcional)</label>
-    <div class="goal-img-zone" id="goal-img-zone" onclick="document.getElementById('goal-img-input').click()">
-      <img id="goal-img-preview" class="goal-img-preview hidden" src="" alt="preview"/>
-      <div id="goal-img-hint-inner">📷 <span style="color:#9a70b8;font-size:.82rem">Toca para agregar imagen</span></div>
+    <div id="goal-img-drag-zone" class="goal-img-drag-zone">
+      <div id="goal-img-empty" class="goal-img-empty" onclick="document.getElementById('goal-img-input').click()">
+        📷 <span style="color:#9a70b8">Toca para agregar imagen</span>
+      </div>
+      <div id="goal-img-move-hint" class="goal-img-move-hint hidden">✥ Arrastra para encuadrar</div>
     </div>
-    <div class="goal-img-hint" id="goal-img-hint">Tu vision board 🌟 — JPG, PNG. Se guarda en tu dispositivo.</div>
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-top:5px">
+      <span class="goal-img-hint">Tu vision board 🌟 — JPG, PNG</span>
+      <div>
+        <button id="goal-img-change" class="hidden" onclick="document.getElementById('goal-img-input').click()" style="background:none;border:none;color:#9a70b8;font-size:.75rem;cursor:pointer">✎ Cambiar</button>
+        <button id="goal-img-remove" class="hidden" onclick="removeGoalImage()" style="background:none;border:none;color:#c06050;font-size:.75rem;cursor:pointer;margin-left:8px">✕ Quitar</button>
+      </div>
+    </div>
     <input type="file" id="goal-img-input" accept="image/*" style="display:none" onchange="handleGoalImageUpload(this)"/>
-    <button id="goal-img-remove" class="hidden" onclick="removeGoalImage()" style="margin-top:4px;background:none;border:none;color:#c06050;font-size:.75rem;cursor:pointer;padding:2px 0">✕ Quitar imagen</button>
   </div>
   <div class="field"><label>Nombre</label><input id="g-name" placeholder="Ej: Laptop, viaje, emergencias…"/></div>
   <div class="field">
@@ -1940,6 +1949,31 @@ function deleteTx(id) {
    METAS
 ════════════════════════════════════════════ */
 let selectedGoalImage = null;
+let selectedGoalPos   = {x: 50, y: 50};
+let _imgDrag = null;
+
+function _initImgDrag() {
+  const zone = document.getElementById('goal-img-drag-zone');
+  if (!zone) return;
+  zone.addEventListener('pointerdown', e => {
+    if (!selectedGoalImage) return;
+    e.preventDefault();
+    zone.setPointerCapture(e.pointerId);
+    _imgDrag = { startX: e.clientX, startY: e.clientY, px: selectedGoalPos.x, py: selectedGoalPos.y };
+  });
+  zone.addEventListener('pointermove', e => {
+    if (!_imgDrag) return;
+    e.preventDefault();
+    const dx = e.clientX - _imgDrag.startX;
+    const dy = e.clientY - _imgDrag.startY;
+    // Dragging right → see more of left side → decrease x
+    selectedGoalPos.x = Math.max(0, Math.min(100, _imgDrag.px - dx * 100 / zone.offsetWidth));
+    selectedGoalPos.y = Math.max(0, Math.min(100, _imgDrag.py - dy * 100 / zone.offsetHeight));
+    zone.style.backgroundPosition = `${selectedGoalPos.x}% ${selectedGoalPos.y}%`;
+  });
+  zone.addEventListener('pointerup',    () => { _imgDrag = null; });
+  zone.addEventListener('pointercancel',() => { _imgDrag = null; });
+}
 
 function handleGoalImageUpload(input) {
   const file = input.files[0];
@@ -1947,32 +1981,41 @@ function handleGoalImageUpload(input) {
   const reader = new FileReader();
   reader.onload = e => {
     selectedGoalImage = e.target.result;
+    selectedGoalPos   = {x: 50, y: 50};
     _refreshGoalImgUI();
   };
   reader.readAsDataURL(file);
 }
 function removeGoalImage() {
   selectedGoalImage = null;
+  selectedGoalPos   = {x: 50, y: 50};
   document.getElementById('goal-img-input').value = '';
   _refreshGoalImgUI();
 }
 function _refreshGoalImgUI() {
-  const preview = document.getElementById('goal-img-preview');
-  const hint    = document.getElementById('goal-img-hint-inner');
-  const zone    = document.getElementById('goal-img-zone');
+  const zone    = document.getElementById('goal-img-drag-zone');
+  const empty   = document.getElementById('goal-img-empty');
+  const hint    = document.getElementById('goal-img-move-hint');
   const rmBtn   = document.getElementById('goal-img-remove');
+  const chgBtn  = document.getElementById('goal-img-change');
   if (selectedGoalImage) {
-    preview.src = selectedGoalImage;
-    preview.classList.remove('hidden');
-    hint.style.display = 'none';
+    zone.style.backgroundImage    = `url('${selectedGoalImage}')`;
+    zone.style.backgroundPosition = `${selectedGoalPos.x}% ${selectedGoalPos.y}%`;
     zone.classList.add('has-img');
+    empty.style.display  = 'none';
+    hint.classList.remove('hidden');
     rmBtn.classList.remove('hidden');
+    chgBtn.classList.remove('hidden');
+    // Auto-hide hint after 2.5s
+    setTimeout(() => { if (hint) hint.style.opacity = '0'; }, 2500);
   } else {
-    preview.src = '';
-    preview.classList.add('hidden');
-    hint.style.display = '';
+    zone.style.backgroundImage = 'none';
     zone.classList.remove('has-img');
+    empty.style.display  = '';
+    hint.classList.add('hidden');
+    hint.style.opacity   = '1';
     rmBtn.classList.add('hidden');
+    chgBtn.classList.add('hidden');
   }
 }
 
@@ -1987,8 +2030,13 @@ function openGoalForm(id) {
   document.getElementById('g-include').checked = g ? (g.includeInTotal !== false) : true;
   selectedGoalColor = g ? g.color : '#f5c9a0';
   selectedGoalImage = g ? (g.image || null) : null;
+  selectedGoalPos   = g && g.imagePos ? {x: g.imagePos.x, y: g.imagePos.y} : {x: 50, y: 50};
+  // Reset hint opacity
+  const hint = document.getElementById('goal-img-move-hint');
+  if (hint) hint.style.opacity = '1';
   renderGoalColors();
   _refreshGoalImgUI();
+  _initImgDrag();
   document.getElementById('g-tgt-prev').classList.add('hidden');
   openModal('m-goal');
 }
@@ -2015,6 +2063,7 @@ function saveGoal() {
     deadline:       document.getElementById('g-dl').value,
     color:          selectedGoalColor,
     image:          selectedGoalImage || null,
+    imagePos:       selectedGoalImage ? {...selectedGoalPos} : null,
     includeInTotal: document.getElementById('g-include').checked
   };
   if (editGoalId) state.goals = state.goals.map(x => x.id===editGoalId ? g : x);
@@ -2590,8 +2639,9 @@ function renderGoals() {
     const pct     = g.target>0 ? Math.min((g.saved/g.target)*100,100) : 0;
     const included= g.includeInTotal !== false;
     const dlBadge = deadlineBadge(g.deadline);
+    const imgPos  = g.imagePos ? `${g.imagePos.x}% ${g.imagePos.y}%` : '50% 50%';
     const imgHtml = g.image
-      ? `<img class="gc-img" src="${g.image}" alt="${esc(g.name)}" onclick="openGoalForm('${g.id}')" style="cursor:pointer" title="Toca para editar"/>`
+      ? `<div class="gc-img" style="background-image:url('${g.image}');background-size:cover;background-position:${imgPos};cursor:pointer" onclick="openGoalForm('${g.id}')" title="Toca para editar encuadre"></div>`
       : `<div class="gc-img-placeholder" onclick="openGoalForm('${g.id}')">📷 <span>Agregar imagen</span></div>`;
     return `<div class="gcard">
       ${imgHtml}
