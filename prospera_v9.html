@@ -126,8 +126,7 @@ body{background:#f5f0eb;font-family:'Inter',sans-serif;color:#4a3f35}
 
 /* GOAL CARDS */
 .gcard{background:#fff;border:1.5px solid #edddd5;border-radius:16px;overflow:hidden;margin-bottom:12px;box-shadow:0 2px 8px rgba(0,0,0,.04)}
-.gc-img{width:100%;height:140px;object-fit:cover;display:block}
-.gc-img-placeholder{width:100%;height:90px;background:linear-gradient(135deg,#f5f0fb,#fdf6f0);display:flex;align-items:center;justify-content:center;cursor:pointer;border-bottom:1px solid #f0e8e0;gap:6px;color:#b0a0c0;font-size:.78rem}
+.gc-img{width:100%;height:140px;display:block}
 .gc-body{padding:14px 18px 18px}
 .gc-hdr{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:14px}
 .gc-name{font-family:'Playfair Display',serif;font-size:1.15rem;color:#3a2e26}
@@ -285,6 +284,9 @@ body{background:#f5f0eb;font-family:'Inter',sans-serif;color:#4a3f35}
 .cat-name-lbl{flex:1;font-size:.86rem;color:#3a2e26;font-weight:500}
 .cat-del-btn{background:none;border:none;color:#d0c0b8;cursor:pointer;font-size:.8rem;padding:3px 6px;border-radius:6px}
 .cat-del-btn:hover{background:#fff0f0;color:#c06050}
+.cat-edit-btn{background:none;border:none;color:#b0a0c8;cursor:pointer;font-size:.8rem;padding:3px 6px;border-radius:6px}
+.cat-edit-btn:hover{background:#f5eaff;color:#8a5fac}
+.cat-editing{background:#f5eaff!important;border-color:#d4c0e0!important}
 .cat-add-form{background:#f5f0fc;border:1.5px solid #d4c0e0;border-radius:12px;padding:14px;margin-top:12px}
 .cat-add-ttl{font-size:.68rem;color:#9a70b8;text-transform:uppercase;letter-spacing:.1em;font-weight:600;margin-bottom:10px}
 .cpick-row{display:flex;flex-wrap:wrap;gap:7px;margin-bottom:10px}
@@ -939,7 +941,11 @@ body{background:#f5f0eb;font-family:'Inter',sans-serif;color:#4a3f35}
   <div id="cat-list"></div>
   <div id="cat-del-warn" class="cat-warn hidden"></div>
   <div class="cat-add-form">
-    <div class="cat-add-ttl">+ Nueva categoria</div>
+    <div class="cat-add-ttl" id="cat-form-ttl">+ Nueva categoria</div>
+    <div id="cat-edit-banner" class="hidden" style="font-size:.72rem;color:#8a5fac;background:#ede5f8;border-radius:8px;padding:5px 10px;margin-bottom:8px;display:flex;justify-content:space-between;align-items:center">
+      <span>Editando categoria</span>
+      <button onclick="cancelEditCat()" style="background:none;border:none;color:#9a70b8;cursor:pointer;font-size:.8rem">✕ Cancelar</button>
+    </div>
     <div class="cat-name-row" style="margin-bottom:10px">
       <input id="cat-new-name" placeholder="Nombre de la categoria" onkeydown="if(event.key==='Enter')addCat()"/>
       <input id="cat-new-emoji" class="cat-emoji-inp" placeholder="•" maxlength="2" style="background:#fff;border:1.5px solid #d4c0e0;border-radius:8px;color:#4a3f35;padding:8px;font-family:'Inter',sans-serif;font-size:1rem;outline:none;text-align:center"/>
@@ -948,7 +954,7 @@ body{background:#f5f0eb;font-family:'Inter',sans-serif;color:#4a3f35}
     <div class="emoji-opt-row" id="cat-emoji-opts"></div>
     <div style="font-size:.65rem;color:#a08070;text-transform:uppercase;letter-spacing:.08em;margin-bottom:6px">Color</div>
     <div class="cpick-row" id="cat-palette-sel"></div>
-    <button class="btn-cat-add" onclick="addCat()">Agregar categoria</button>
+    <button class="btn-cat-add" id="btn-cat-save" onclick="addCat()">Agregar categoria</button>
   </div>
   <div class="btn-row" style="margin-top:16px">
     <button class="bsave" onclick="closeCatManager()">Listo</button>
@@ -1068,14 +1074,15 @@ const DEFAULT_CATS = [
 ];
 let CATS = [...DEFAULT_CATS];
 const GCOLS = [
-  '#FF0000','#E53935','#C62828',
-  '#FF6D00','#F4511E','#E64A19',
-  '#FFD600','#FFC400','#FFAB00',
-  '#00E676','#00C853','#1B5E20',
-  '#2979FF','#0091EA','#01579B',
-  '#D500F9','#AA00FF','#6200EA',
-  '#FF4081','#F50057',
-  '#37474F','#263238'
+  '#FF0000','#E53935','#C62828','#FF5252',
+  '#FF6D00','#F4511E','#E64A19','#FF9100',
+  '#FFD600','#FFC400','#FFAB00','#FFE57F',
+  '#00E676','#00C853','#1B5E20','#69F0AE','#76FF03',
+  '#2979FF','#0091EA','#01579B','#40C4FF','#00B0FF',
+  '#D500F9','#AA00FF','#6200EA','#E040FB','#7C4DFF',
+  '#FF4081','#F50057','#FF80AB','#F48FB1',
+  '#8D6E63','#6D4C41','#BCAAA4',
+  '#37474F','#263238','#455A64'
 ];
 
 let state = {
@@ -1462,22 +1469,24 @@ function syncCatsFromState() {
    GESTIÓN DE CATEGORÍAS
 ════════════════════════════════════════════ */
 const CAT_PALETTE = [
-  // 🔴 Rojos urgentes
-  '#FF0000','#E53935','#C62828',
-  // 🟠 Naranjas alerta
-  '#FF6D00','#F4511E','#E64A19',
-  // 🟡 Amarillos intensos
-  '#FFD600','#FFC400','#FFAB00',
-  // 🟢 Verdes vibrantes
-  '#00E676','#00C853','#1B5E20',
-  // 🔵 Azules fuertes
-  '#2979FF','#0091EA','#01579B',
-  // 🟣 Morados/fucsia
-  '#D500F9','#AA00FF','#6200EA',
-  // 🩷 Rosas fuerte
-  '#FF4081','#F50057',
-  // ⚫ Neutros oscuros
-  '#37474F','#263238'
+  // 🔴 Rojos
+  '#FF0000','#E53935','#C62828','#FF5252',
+  // 🟠 Naranjas
+  '#FF6D00','#F4511E','#E64A19','#FF9100',
+  // 🟡 Amarillos
+  '#FFD600','#FFC400','#FFAB00','#FFE57F',
+  // 🟢 Verdes
+  '#00E676','#00C853','#1B5E20','#69F0AE','#76FF03',
+  // 🔵 Azules
+  '#2979FF','#0091EA','#01579B','#40C4FF','#00B0FF',
+  // 🟣 Morados
+  '#D500F9','#AA00FF','#6200EA','#E040FB','#7C4DFF',
+  // 🩷 Rosas
+  '#FF4081','#F50057','#FF80AB','#F48FB1',
+  // 🟤 Tierras
+  '#8D6E63','#6D4C41','#BCAAA4',
+  // ⚫ Oscuros / neutros
+  '#37474F','#263238','#455A64'
 ];
 const CAT_EMOJIS = ['⚡','✨','🛒','🏠','🐾','💰','•','🍔','🚗','👗','💊','🎮','📱','✈️','🎓','💅','🏋️','🎁','🐱','🐶','🌿','🧴','🧹','💡','🎵','📚'];
 
@@ -1506,13 +1515,45 @@ function selectCatEmoji(emoji) {
 function renderCatManagerList() {
   const el = document.getElementById('cat-list');
   el.innerHTML = CATS.map((c, i) => `
-    <div class="cat-row" id="catrow-${c.id}">
+    <div class="cat-row${editCatId===c.id?' cat-editing':''}" id="catrow-${c.id}">
       <div class="cat-dot" style="background:${c.color}"></div>
       <span class="cat-emoji-lbl">${c.emoji}</span>
       <span class="cat-name-lbl">${esc(c.label)}</span>
+      <button class="cat-edit-btn" onclick="startEditCat('${c.id}')" title="Editar">✎</button>
       <button class="cat-del-btn" onclick="deleteCat('${c.id}')" title="Eliminar">✕</button>
     </div>`
   ).join('');
+}
+
+let editCatId = null;
+
+function startEditCat(id) {
+  const cat = CATS.find(c => c.id === id);
+  if (!cat) return;
+  editCatId = id;
+  document.getElementById('cat-new-name').value  = cat.label;
+  document.getElementById('cat-new-emoji').value = cat.emoji;
+  document.getElementById('cat-form-ttl').textContent = '';
+  document.getElementById('cat-edit-banner').classList.remove('hidden');
+  document.getElementById('btn-cat-save').textContent = '✔ Guardar cambios';
+  // Highlight the current color in the palette
+  document.querySelectorAll('.cpick').forEach(el => {
+    el.classList.toggle('cpick-on', el.dataset.color === cat.color);
+  });
+  renderCatManagerList();
+  document.getElementById('cat-new-name').focus();
+}
+
+function cancelEditCat() {
+  editCatId = null;
+  document.getElementById('cat-new-name').value  = '';
+  document.getElementById('cat-new-emoji').value = '•';
+  document.getElementById('cat-form-ttl').textContent = '+ Nueva categoria';
+  document.getElementById('cat-edit-banner').classList.add('hidden');
+  document.getElementById('btn-cat-save').textContent = 'Agregar categoria';
+  // Reset palette to first color
+  document.querySelectorAll('.cpick').forEach((el, i) => el.classList.toggle('cpick-on', i === 0));
+  renderCatManagerList();
 }
 
 function addCat() {
@@ -1520,7 +1561,17 @@ function addCat() {
   if (!name) { document.getElementById('cat-new-name').focus(); return; }
   const emoji = document.getElementById('cat-new-emoji').value || '•';
   const colorEl = document.querySelector('.cpick-on');
-  const color = colorEl ? colorEl.dataset.color : CAT_PALETTE[Math.floor(Math.random()*CAT_PALETTE.length)];
+  const color = colorEl ? colorEl.dataset.color : CAT_PALETTE[0];
+
+  if (editCatId) {
+    // Edit existing
+    CATS = CATS.map(c => c.id === editCatId ? {...c, label: name, emoji, color} : c);
+    state.cats = CATS;
+    save(); renderAll();
+    cancelEditCat();
+    return;
+  }
+  // New
   const id = 'cat_' + Date.now();
   CATS.push({ id, label: name, color, emoji });
   state.cats = CATS;
@@ -1532,19 +1583,31 @@ function addCat() {
 function deleteCat(id) {
   const cat = CATS.find(c => c.id === id);
   if (!cat) return;
-  const inUse = state.txs.some(t => t.category === id) || state.debts.some(d => d.category === id);
+  const inUse = state.txs.some(t => t.category === id);
   if (inUse) {
-    const row = document.getElementById('catrow-' + id);
-    if (row) { row.style.background='#fff0f0'; setTimeout(()=>row.style.background='',1200); }
+    // Confirm and clear category from transactions
     const warn = document.getElementById('cat-del-warn');
-    if (warn) { warn.textContent = 'No se puede eliminar "' + cat.label + '" porque ya tiene movimientos registrados.'; warn.classList.remove('hidden'); setTimeout(()=>warn.classList.add('hidden'),3000); }
-    return;
+    if (warn && !warn.dataset.confirming) {
+      warn.textContent = `"${cat.label}" tiene movimientos. Toca ✕ de nuevo para eliminar igual (los movimientos quedan sin categoría).`;
+      warn.classList.remove('hidden');
+      warn.dataset.confirming = id;
+      warn.dataset.timer = setTimeout(() => { warn.classList.add('hidden'); delete warn.dataset.confirming; }, 4000);
+      return;
+    }
+    if (warn && warn.dataset.confirming === id) {
+      clearTimeout(parseInt(warn.dataset.timer));
+      warn.classList.add('hidden');
+      delete warn.dataset.confirming;
+      // Clear the category from all transactions
+      state.txs = state.txs.map(t => t.category === id ? {...t, category: ''} : t);
+    }
   }
+  if (editCatId === id) cancelEditCat();
   CATS = CATS.filter(c => c.id !== id);
   state.cats = CATS;
-  // Limpiar topes de esa categoría
   Object.keys(state.caps).forEach(mon => { if(state.caps[mon][id]) delete state.caps[mon][id]; });
   save();
+  renderAll();
   renderCatManagerList();
 }
 
@@ -2641,9 +2704,14 @@ function renderGoals() {
     const dlBadge = deadlineBadge(g.deadline);
     const imgPos  = g.imagePos ? `${g.imagePos.x}% ${g.imagePos.y}%` : '50% 50%';
     const imgHtml = g.image
-      ? `<div class="gc-img" style="background-image:url('${g.image}');background-size:cover;background-position:${imgPos};cursor:pointer" onclick="openGoalForm('${g.id}')" title="Toca para editar encuadre"></div>`
-      : `<div class="gc-img-placeholder" onclick="openGoalForm('${g.id}')">📷 <span>Agregar imagen</span></div>`;
-    return `<div class="gcard">
+      ? `<div class="gc-img" style="background-image:url('${g.image}');background-size:cover;background-position:${imgPos};cursor:pointer;position:relative" onclick="openGoalForm('${g.id}')" title="Toca para editar encuadre">
+           <div style="position:absolute;bottom:0;left:0;width:${pct}%;height:5px;background:${g.color};opacity:.85;transition:width .4s"></div>
+         </div>`
+      : `<div class="gc-img" style="background:linear-gradient(to right, ${g.color} ${pct}%, ${g.color}28 ${pct}%);cursor:pointer;position:relative;display:flex;align-items:center;justify-content:center" onclick="openGoalForm('${g.id}')">
+           <span style="font-size:2rem;opacity:.35;filter:saturate(0.4) brightness(1.4);position:relative;z-index:1">${g.name.charAt(0).toUpperCase()}</span>
+           <div style="position:absolute;bottom:6px;right:10px;font-size:.65rem;font-weight:600;color:${g.color};background:rgba(255,255,255,.75);border-radius:8px;padding:2px 7px">${pct.toFixed(0)}%</div>
+         </div>`;
+    return `<div class="gcard" style="border-color:${g.color}90;background:${g.color}12">
       ${imgHtml}
       <div class="gc-body">
         <div class="gc-hdr">
