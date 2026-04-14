@@ -2279,46 +2279,8 @@ function renderCards() {
     ? `${included.length} meta${included.length>1?'s':''} incluida${included.length>1?'s':''} · ${fUSD(toUSD(totalGoalSav))} / ${fUSD(toUSD(totalGoalTgt))} USD`
     : 'Marca metas con ☑ para verlas aquí';
 
-  /* Dinero disponible actualmente:
-     - Ingresos sin destino específico
-     - + Reservado para deudas/pendientes que aún no se ha abonado
-     - − Todos los egresos NO vinculados a deudas ni pendientes reservados
-     El resultado = lo que realmente tienes libre para gastar */
-  const sinDestino      = state.txs.filter(t=>t.type==='ingreso'&&(!t.destCategory||t.destCategory==='')).reduce((s,t)=>s+t.amount,0);
-  // Egresos que consumen dinero libre (no son abonos a deuda/pendiente con reserva)
-  const egresosSinReserva = state.txs.filter(t=>t.type==='egreso'&&!t.debtId&&!t.pendId&&!t.goalId).reduce((s,t)=>s+t.amount,0);
-  // Egresos que son abonos a deuda — solo los que exceden la reserva consumen dinero libre
-  const egresoDeuda = state.txs.filter(t=>t.type==='egreso'&&t.debtId).reduce((s,t)=>s+t.amount,0);
-  const egressoPend = state.txs.filter(t=>t.type==='egreso'&&t.pendId).reduce((s,t)=>s+t.amount,0);
-  const excedDeuda  = Math.max(0, egresoDeuda - reservaDeudas);
-  const excedPend   = Math.max(0, egressoPend - reservaPend);
-  const dispWrap = document.getElementById('disp-wrap');
-  const totalDisp = sinDestino - egresosSinReserva - excedDeuda - excedPend;
-  const hayIngresosLibres = sinDestino > 0 || reservaDeudas > 0 || reservaPend > 0;
-  if (hayIngresosLibres) {
-    dispWrap.classList.remove('hidden');
-    document.getElementById('disp-val').textContent = fCOP(totalDisp);
-    document.getElementById('disp-val').style.color = totalDisp >= 0 ? '#3a6a9a' : '#c06050';
-    document.getElementById('disp-usd').textContent = fUSD(toUSD(totalDisp)) + ' USD';
-    document.getElementById('disp-sub').textContent = `Ingresos libres ${fCOP(sinDestino)} − Gastos ${fCOP(egresosSinReserva + excedDeuda + excedPend)}`;
-  } else { dispWrap.classList.add('hidden'); }
-
-  /* Banner dinero libre */
-  const cm    = curMon();
-  /* Solo cuenta ingresos destinados a "presupuesto" o sin destino específico para el banner */
-  const mIn   = state.txs.filter(t=>t.date.startsWith(cm)&&t.type==='ingreso'&&(!t.destCategory||t.destCategory==='presupuesto')).reduce((s,t)=>s+t.amount,0);
-  const caps  = state.caps[cm] || {};
-  const tCaps = Object.values(caps).reduce((s,v)=>s+(v||0),0);
-  const free  = mIn - tCaps;
-  const fwrap = document.getElementById('fmb-wrap');
-  if (mIn > 0) {
-    fwrap.classList.remove('hidden');
-    document.getElementById('fmb-sub').textContent = `Ingr. a presupuesto ${fCOP(mIn)} − Topes ${fCOP(tCaps)}`;
-    document.getElementById('fmb-val').textContent = fCOP(free);
-    document.getElementById('fmb-val').style.color = free>=0 ? '#3a7a4a' : '#c06050';
-    document.getElementById('fmb-usd').textContent = fUSD(toUSD(free)) + ' USD';
-  } else fwrap.classList.add('hidden');
 }
+
 
 function renderMovimientos() {
   const ingresos = state.txs.filter(t=>t.type==='ingreso');
@@ -2436,7 +2398,7 @@ function renderBudget() {
   const caps  = state.caps[cm] || {};
   const tCaps = Object.values(caps).reduce((s,v)=>s+(v||0),0);
   const free  = mIn - tCaps;
-  document.getElementById('bsb-hint') && document.getElementById('bsb-hint').classList.toggle('hidden', tCaps > 0);
+
 
   // ── Banner apartado vs topes ──────────────────────────────
   // "Apartado" = todos los ingresos (de cualquier fecha) con destino 'presupuesto'
