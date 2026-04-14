@@ -670,6 +670,27 @@ body{background:#f5f0eb;font-family:'Inter',sans-serif;color:#4a3f35}
       </div>
       <div id="bsb-hint" class="hidden" style="font-size:.72rem;color:#b0a090;margin-top:10px;text-align:center">Sin topes definidos. Toca <strong>Editar topes</strong> para empezar.</div>
     </div>
+    <!-- Banner apartado vs topes -->
+    <div id="bud-res-banner" class="hidden" style="background:linear-gradient(135deg,#fdf0fb,#f0f4ff);border:1.5px solid #d4c0e0;border-radius:16px;padding:14px 16px;margin-bottom:14px">
+      <div style="font-size:.62rem;color:#9a80b0;text-transform:uppercase;letter-spacing:.1em;font-weight:600;margin-bottom:10px">📊 Dinero apartado para presupuesto</div>
+      <div style="display:flex;justify-content:space-between;gap:6px">
+        <div style="flex:1;text-align:center;background:#fff;border-radius:10px;padding:8px 6px;border:1px solid #e8ddd5">
+          <div style="font-size:.58rem;color:#a08070;text-transform:uppercase;letter-spacing:.07em;margin-bottom:3px">Apartado</div>
+          <div style="font-family:'Playfair Display',serif;font-size:.95rem;font-weight:600;color:#7a5fa8" id="bud-res-apt">$0</div>
+          <div style="font-size:.58rem;color:#b0a090;margin-top:2px" id="bud-res-apt-usd"></div>
+        </div>
+        <div style="flex:1;text-align:center;background:#fff;border-radius:10px;padding:8px 6px;border:1px solid #e8ddd5">
+          <div style="font-size:.58rem;color:#a08070;text-transform:uppercase;letter-spacing:.07em;margin-bottom:3px">Topes totales</div>
+          <div style="font-family:'Playfair Display',serif;font-size:.95rem;font-weight:600;color:#c09030" id="bud-res-top">$0</div>
+          <div style="font-size:.58rem;color:#b0a090;margin-top:2px" id="bud-res-top-usd"></div>
+        </div>
+        <div style="flex:1;text-align:center;background:#fff;border-radius:10px;padding:8px 6px;border:1px solid #e8ddd5">
+          <div style="font-size:.58rem;color:#a08070;text-transform:uppercase;letter-spacing:.07em;margin-bottom:3px">Diferencia</div>
+          <div style="font-family:'Playfair Display',serif;font-size:.95rem;font-weight:600" id="bud-res-dif">$0</div>
+          <div style="font-size:.58rem;color:#b0a090;margin-top:2px" id="bud-res-dif-lbl"></div>
+        </div>
+      </div>
+    </div>
     <div class="bud-table-wrap">
       <table class="bud-table">
         <thead>
@@ -2451,6 +2472,27 @@ function renderBudget() {
   document.getElementById('bsb-lib-u').textContent = fUSD(toUSD(free)) + ' USD';
   document.getElementById('bsb-inf').textContent   = free>=0 ? 'Despues de cubrir todo lo presupuestado' : 'Topes mayores a ingresos';
   document.getElementById('bsb-hint').classList.toggle('hidden', tCaps > 0);
+
+  // ── Banner apartado vs topes ──────────────────────────────
+  // "Apartado" = todos los ingresos (de cualquier fecha) con destino 'presupuesto'
+  const aptTotal = state.txs.filter(t=>t.type==='ingreso'&&t.destCategory==='presupuesto').reduce((s,t)=>s+t.amount,0);
+  const resBanner = document.getElementById('bud-res-banner');
+  if (tCaps > 0 || aptTotal > 0) {
+    resBanner.classList.remove('hidden');
+    document.getElementById('bud-res-apt').textContent     = fCOP(aptTotal);
+    document.getElementById('bud-res-apt-usd').textContent = fUSD(toUSD(aptTotal)) + ' USD';
+    document.getElementById('bud-res-top').textContent     = fCOP(tCaps);
+    document.getElementById('bud-res-top-usd').textContent = fUSD(toUSD(tCaps)) + ' USD';
+    const dif    = aptTotal - tCaps;
+    const difEl  = document.getElementById('bud-res-dif');
+    const difLbl = document.getElementById('bud-res-dif-lbl');
+    difEl.textContent  = dif >= 0 ? fCOP(dif) : '(' + fCOP(Math.abs(dif)) + ')';
+    difEl.style.color  = dif >= 0 ? '#5a9a6a' : '#c06050';
+    difLbl.textContent = dif > 0 ? 'Sobra' : dif < 0 ? 'Falta' : '¡Exacto!';
+    difLbl.style.color = dif >= 0 ? '#5a9a6a' : '#c06050';
+  } else {
+    resBanner.classList.add('hidden');
+  }
 
   const spentBC = {};
   mOut.forEach(t => { spentBC[t.category]=(spentBC[t.category]||0)+t.amount; });
