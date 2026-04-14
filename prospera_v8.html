@@ -2213,8 +2213,9 @@ function renderHeader() {
 }
 
 function renderCards() {
-  // Ingresos: excluir los destinados a metas, reserva deudas y reserva pendientes
-  const totalIn  = state.txs.filter(t=>t.type==='ingreso'&&!(t.destCategory&&(t.destCategory.startsWith('goal:')||t.destCategory==='reserva:deudas'||t.destCategory==='reserva:pendientes'))).reduce((s,t)=>s+t.amount,0);
+  // Ingresos: excluir solo los destinados a metas (esos se contabilizan en la sección de metas)
+  // Las reservas para deudas y pendientes SÍ cuentan como ingreso, porque el egreso del abono también cuenta
+  const totalIn  = state.txs.filter(t=>t.type==='ingreso'&&!(t.destCategory&&t.destCategory.startsWith('goal:'))).reduce((s,t)=>s+t.amount,0);
   const totalOut = state.txs.filter(t=>t.type==='egreso').reduce((s,t)=>s+t.amount,0);
   const bal      = totalIn - totalOut;
   document.getElementById('c-in').textContent     = fCOP(totalIn);
@@ -2283,17 +2284,28 @@ function renderCards() {
     ? `${included.length} meta${included.length>1?'s':''} incluida${included.length>1?'s':''} · ${fUSD(toUSD(totalGoalSav))} / ${fUSD(toUSD(totalGoalTgt))} USD`
     : 'Marca metas con ☑ para verlas aquí';
 
-  /* Dinero disponible actualmente: ingresos SIN destino (ni meta, ni presupuesto) menos egresos sin categoría especial */
-  const sinDestino = state.txs.filter(t=>t.type==='ingreso'&&(!t.destCategory||t.destCategory==='')).reduce((s,t)=>s+t.amount,0);
-  const totalEgresos = state.txs.filter(t=>t.type==='egreso').reduce((s,t)=>s+t.amount,0);
+  /* Dinero disponible actualmente:
+     - Ingresos sin destino específico
+     - + Reservado para deudas/pendientes que aún no se ha abonado
+     - − Todos los egresos NO vinculados a deudas ni pendientes reservados
+     El resultado = lo que realmente tienes libre para gastar */
+  const sinDestino      = state.txs.filter(t=>t.type==='ingreso'&&(!t.destCategory||t.destCategory==='')).reduce((s,t)=>s+t.amount,0);
+  // Egresos que consumen dinero libre (no son abonos a deuda/pendiente con reserva)
+  const egresosSinReserva = state.txs.filter(t=>t.type==='egreso'&&!t.debtId&&!t.pendId&&!t.goalId).reduce((s,t)=>s+t.amount,0);
+  // Egresos que son abonos a deuda — solo los que exceden la reserva consumen dinero libre
+  const egresoDeuda = state.txs.filter(t=>t.type==='egreso'&&t.debtId).reduce((s,t)=>s+t.amount,0);
+  const egressoPend = state.txs.filter(t=>t.type==='egreso'&&t.pendId).reduce((s,t)=>s+t.amount,0);
+  const excedDeuda  = Math.max(0, egresoDeuda - reservaDeudas);
+  const excedPend   = Math.max(0, egressoPend - reservaPend);
   const dispWrap = document.getElementById('disp-wrap');
-  if (sinDestino > 0) {
+  const totalDisp = sinDestino - egresosSinReserva - excedDeuda - excedPend;
+  const hayIngresosLibres = sinDestino > 0 || reservaDeudas > 0 || reservaPend > 0;
+  if (hayIngresosLibres) {
     dispWrap.classList.remove('hidden');
-    const disponible = sinDestino - totalEgresos;
-    document.getElementById('disp-val').textContent = fCOP(disponible);
-    document.getElementById('disp-val').style.color = disponible >= 0 ? '#3a6a9a' : '#c06050';
-    document.getElementById('disp-usd').textContent = fUSD(toUSD(disponible)) + ' USD';
-    document.getElementById('disp-sub').textContent = `Ingresos sin destino ${fCOP(sinDestino)} − Egresos ${fCOP(totalEgresos)}`;
+    document.getElementById('disp-val').textContent = fCOP(totalDisp);
+    document.getElementById('disp-val').style.color = totalDisp >= 0 ? '#3a6a9a' : '#c06050';
+    document.getElementById('disp-usd').textContent = fUSD(toUSD(totalDisp)) + ' USD';
+    document.getElementById('disp-sub').textContent = `Ingresos libres ${fCOP(sinDestino)} − Gastos ${fCOP(egresosSinReserva + excedDeuda + excedPend)}`;
   } else { dispWrap.classList.add('hidden'); }
 
   /* Banner dinero libre */
