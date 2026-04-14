@@ -606,18 +606,7 @@ body{background:#f5f0eb;font-family:'Inter',sans-serif;color:#4a3f35}
     <div class="tip-text" id="tip-text"></div>
   </div>
 </div>
-<div id="disp-wrap" class="hidden" style="margin:8px 16px 0">
-  <div style="background:linear-gradient(135deg,#f0f8ff,#e8f5e9);border:1.5px solid #a8c5e8;border-radius:14px;padding:12px 16px;display:flex;align-items:center;justify-content:space-between">
-    <div>
-      <div style="font-size:.68rem;color:#5080b0;text-transform:uppercase;letter-spacing:.1em;font-weight:600">💵 Dinero disponible actualmente</div>
-      <div style="font-size:.63rem;color:#90a8c8;margin-top:1px" id="disp-sub">Ingresos sin destino específico</div>
-    </div>
-    <div style="text-align:right">
-      <div style="font-family:'Playfair Display',serif;font-size:1.25rem;font-weight:600" id="disp-val">$0</div>
-      <div style="font-size:.63rem;color:#90a8c8;margin-top:1px" id="disp-usd">$0.00 USD</div>
-    </div>
-  </div>
-</div>
+
 
 <!-- TABS -->
 <div class="tabs">
@@ -658,17 +647,6 @@ body{background:#f5f0eb;font-family:'Inter',sans-serif;color:#4a3f35}
         <button class="ecaps" onclick="openCaps()">&#9998; Editar topes</button>
         <button class="ecaps" style="color:#c06050;border-color:#f5c8c0;background:#fff5f5" onclick="resetMonthCaps()">&#8635; Reset</button>
       </div>
-    </div>
-    <div class="bsb" style="margin-bottom:12px">
-      <div class="bsb-t">Resumen del mes</div>
-      <div class="bsb-row">
-        <div class="bsb-item"><div class="bsb-lbl">Ingresos</div><div class="bsb-val cg" id="bsb-in">$0</div><div class="bsb-usd" id="bsb-in-u"></div></div>
-        <div class="bsb-div"></div>
-        <div class="bsb-item"><div class="bsb-lbl">Presupuestado</div><div class="bsb-val ca" id="bsb-pre">$0</div><div class="bsb-usd" id="bsb-pre-u"></div></div>
-        <div class="bsb-div"></div>
-        <div class="bsb-item"><div class="bsb-lbl">Libre</div><div class="bsb-val" id="bsb-lib">$0</div><div class="bsb-usd" id="bsb-lib-u"></div><div class="bsb-inf" id="bsb-inf"></div></div>
-      </div>
-      <div id="bsb-hint" class="hidden" style="font-size:.72rem;color:#b0a090;margin-top:10px;text-align:center">Sin topes definidos. Toca <strong>Editar topes</strong> para empezar.</div>
     </div>
     <!-- Banner apartado vs topes -->
     <div id="bud-res-banner" class="hidden" style="background:linear-gradient(135deg,#fdf0fb,#f0f4ff);border:1.5px solid #d4c0e0;border-radius:16px;padding:14px 16px;margin-bottom:14px">
@@ -2462,16 +2440,7 @@ function renderBudget() {
   const caps  = state.caps[cm] || {};
   const tCaps = Object.values(caps).reduce((s,v)=>s+(v||0),0);
   const free  = mIn - tCaps;
-  document.getElementById('bsb-in').textContent    = fCOP(mIn);
-  document.getElementById('bsb-in-u').textContent  = fUSD(toUSD(mIn)) + ' USD';
-  document.getElementById('bsb-pre').textContent   = fCOP(tCaps);
-  document.getElementById('bsb-pre-u').textContent = fUSD(toUSD(tCaps)) + ' USD';
-  const libEl = document.getElementById('bsb-lib');
-  libEl.textContent = fCOP(free);
-  libEl.className   = 'bsb-val ' + (free>=0?'cp':'cn');
-  document.getElementById('bsb-lib-u').textContent = fUSD(toUSD(free)) + ' USD';
-  document.getElementById('bsb-inf').textContent   = free>=0 ? 'Despues de cubrir todo lo presupuestado' : 'Topes mayores a ingresos';
-  document.getElementById('bsb-hint').classList.toggle('hidden', tCaps > 0);
+  document.getElementById('bsb-hint') && document.getElementById('bsb-hint').classList.toggle('hidden', tCaps > 0);
 
   // ── Banner apartado vs topes ──────────────────────────────
   // "Apartado" = todos los ingresos (de cualquier fecha) con destino 'presupuesto'
