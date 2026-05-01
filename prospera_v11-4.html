@@ -1143,6 +1143,28 @@ body{background:#f5f0eb;font-family:'Inter',sans-serif;color:#4a3f35}
   <div class="field"><label>Categoría</label><select id="p-cat"></select></div>
   <div class="field"><label>Notas (opcional)</label><input id="p-notes" placeholder="Ej: vence el 15…"/></div>
   <div class="field"><label>Fecha tope (opcional)</label><input id="p-deadline" type="date"/></div>
+  <div class="field">
+    <label>¿Se repite?</label>
+    <select id="p-recurrence" onchange="toggleRecurCount()">
+      <option value="none">No se repite</option>
+      <option value="weekly">Cada semana</option>
+      <option value="biweekly">Cada 15 días</option>
+      <option value="monthly">Cada mes</option>
+    </select>
+  </div>
+  <div class="field hidden" id="p-recur-count-wrap">
+    <label>¿Cuántas veces se repite?</label>
+    <div style="display:flex;gap:8px;align-items:center">
+      <label style="display:flex;align-items:center;gap:6px;font-size:.8rem;color:#7a6a60;cursor:pointer">
+        <input type="radio" name="p-recur-type" value="infinite" checked onchange="toggleRecurCountInput()" style="accent-color:#c9a8d4"> Infinito
+      </label>
+      <label style="display:flex;align-items:center;gap:6px;font-size:.8rem;color:#7a6a60;cursor:pointer">
+        <input type="radio" name="p-recur-type" value="fixed" onchange="toggleRecurCountInput()" style="accent-color:#c9a8d4"> Número fijo
+      </label>
+    </div>
+    <input type="number" id="p-recur-count" min="1" placeholder="Ej: 4" style="margin-top:8px;display:none" />
+    <div id="p-recur-count-hint" style="font-size:.65rem;color:#a08070;margin-top:4px;display:none">El pendiente se eliminará automáticamente después de completarse ese número de veces.</div>
+  </div>
   <div class="btn-row">
     <button class="bcancel" onclick="closeModal('m-pend')">Cancelar</button>
     <button class="bsave bsave-a" onclick="savePend()">Guardar</button>
@@ -2643,6 +2665,25 @@ function debtToPending(id) {
   save(); renderAll();
 }
 
+function toggleRecurCount() {
+  const val  = document.getElementById('p-recurrence').value;
+  const wrap = document.getElementById('p-recur-count-wrap');
+  if (!wrap) return;
+  wrap.classList.toggle('hidden', val === 'none');
+  if (val === 'none') return;
+  // reset to infinite when switching frequency
+  const radios = document.querySelectorAll('input[name="p-recur-type"]');
+  radios.forEach(r => { if (r.value === 'infinite') r.checked = true; });
+  toggleRecurCountInput();
+}
+function toggleRecurCountInput() {
+  const fixed = document.querySelector('input[name="p-recur-type"]:checked')?.value === 'fixed';
+  const inp   = document.getElementById('p-recur-count');
+  const hint  = document.getElementById('p-recur-count-hint');
+  if (inp)  inp.style.display  = fixed ? '' : 'none';
+  if (hint) hint.style.display = fixed ? '' : 'none';
+}
+
 /* ════════════════════════════════════════════
    PENDIENTES
 ════════════════════════════════════════════ */
@@ -2662,6 +2703,15 @@ function openPendForm(id) {
   }
   document.getElementById('p-notes').value    = p ? (p.notes||'') : '';
   document.getElementById('p-deadline').value = p ? (p.deadline||'') : '';
+  document.getElementById('p-recurrence').value = p ? (p.recurrence||'none') : 'none';
+  // Repeat count
+  const isFixed = p && p.recurCount !== undefined && p.recurCount !== null;
+  document.querySelectorAll('input[name="p-recur-type"]').forEach(r => {
+    r.checked = r.value === (isFixed ? 'fixed' : 'infinite');
+  });
+  const countInp = document.getElementById('p-recur-count');
+  if (countInp) countInp.value = isFixed ? (p.recurCount || '') : '';
+  toggleRecurCount();
   document.getElementById('p-total-prev').classList.add('hidden');
   populateCatSelect('p-cat');
   if (p) document.getElementById('p-cat').value = p.category;
@@ -2673,6 +2723,12 @@ function savePend() {
   if (!name || !rawTotal) return;
   const total = getUSDFromField('p-total', 'p-total-cur');
   const paidCOP = parseFloat(document.getElementById('p-paid').value) || 0;
+  const recurrence = document.getElementById('p-recurrence').value;
+  const recurType  = document.querySelector('input[name="p-recur-type"]:checked')?.value || 'infinite';
+  const recurCount = (recurrence !== 'none' && recurType === 'fixed')
+    ? (parseInt(document.getElementById('p-recur-count').value) || null)
+    : null;
+  const existingP  = editPendId ? state.pendings.find(x=>x.id===editPendId) : null;
   const p = {
     id:        editPendId || uid(),
     name, total,
@@ -2680,7 +2736,11 @@ function savePend() {
     category:  document.getElementById('p-cat').value,
     notes:     document.getElementById('p-notes').value,
     deadline:  document.getElementById('p-deadline').value,
-    createdAt: editPendId ? (state.pendings.find(x=>x.id===editPendId)?.createdAt || today()) : today()
+    recurrence,
+    recurCount,
+    recurDone:  existingP ? (existingP.recurDone || 0) : 0,
+    lastReset: existingP ? (existingP.lastReset || today()) : today(),
+    createdAt: editPendId ? (existingP?.createdAt || today()) : today()
   };
   if (editPendId) state.pendings = state.pendings.map(x => x.id===editPendId ? p : x);
   else state.pendings.push(p);
@@ -3284,7 +3344,7 @@ function renderPendings() {
           ${!done && priorityNum ? `<div class="debt-priority-num" style="background:linear-gradient(135deg,#f5c9a0,#e8a060)">${priorityNum}</div>` : ''}
         </div>
         <div class="dc-hdr-info">
-          <div class="dc-name">${done?'✓ ':''}${esc(p.name)}</div>
+          <div class="dc-name">${done?'✓ ':''}${esc(p.name)}${p.recurrence&&p.recurrence!=='none'?`<span class="recur-tag" style="background:#fff8ee;border-color:#f5ddb8;color:#c07030">🔁 ${p.recurrence==='weekly'?'Semanal':p.recurrence==='biweekly'?'Quincenal':'Mensual'}${p.recurCount?` · ${p.recurDone||0}/${p.recurCount}`:' · ∞'}</span>`:''}</div>
           <div class="dc-cat">${cat.emoji} ${cat.label} · Total ${fUSD(p.total)} <span style="color:#b0a090;font-size:.6rem">(${fCOP(toCOP(p.total))})</span></div>
           ${urg.html}
         </div>
@@ -3875,6 +3935,37 @@ function processRecurring() {
   save();
 }
 
+function processRecurringPendings() {
+  const t = today();
+  let changed = false;
+  const toDelete = [];
+  state.pendings = state.pendings.map(p => {
+    if (!p.recurrence || p.recurrence === 'none') return p;
+    if (p.paid < p.total) return p; // aún no pagado, no resetear
+    const last      = p.lastReset || p.createdAt || t;
+    const diffDays  = Math.floor((new Date(t) - new Date(last)) / 86400000);
+    let shouldReset = false;
+    if (p.recurrence === 'weekly'   && diffDays >= 7)  shouldReset = true;
+    if (p.recurrence === 'biweekly' && diffDays >= 15) shouldReset = true;
+    if (p.recurrence === 'monthly'  && diffDays >= 28) shouldReset = true;
+    if (!shouldReset) return p;
+    // Contar esta repetición
+    const newDone = (p.recurDone || 0) + 1;
+    // Si tiene límite fijo y ya lo alcanzó → eliminar
+    if (p.recurCount !== null && p.recurCount !== undefined && newDone >= p.recurCount) {
+      toDelete.push(p.id);
+      changed = true;
+      return p; // se filtrará abajo
+    }
+    changed = true;
+    return { ...p, paid: 0, lastReset: t, completedAt: null, recurDone: newDone };
+  });
+  if (toDelete.length) {
+    state.pendings = state.pendings.filter(p => !toDelete.includes(p.id));
+  }
+  if (changed) save();
+}
+
 /* ════════════════════════════════════════════
    CALENDARIO DE MOVIMIENTOS
 ════════════════════════════════════════════ */
@@ -4168,6 +4259,7 @@ load();
 syncCatsFromState();
 cleanCompletedItems();
 processRecurring();
+processRecurringPendings();
 renderAlerts();
 renderTip();
 // No renderAll aquí — se llama después del login o skip
