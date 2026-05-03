@@ -540,12 +540,12 @@ body{background:#f5f0eb;font-family:'Inter',sans-serif;color:#4a3f35}
   .cur-btn { padding: 0 9px; font-size: .7rem; min-width: 38px; }
   .cur-flip { display:inline-flex; align-items:center; gap:5px; background:linear-gradient(135deg,#f5eaf8,#eaf0f8); border:1.5px solid #c9a8d4; border-radius:10px; padding:7px 12px; font-size:.78rem; font-weight:700; color:#7a5fa8; cursor:pointer; font-family:inherit; white-space:nowrap; transition:all .15s; flex-shrink:0; }
   .cur-flip:hover { border-color:#a8b0e8; background:linear-gradient(135deg,#eaeef8,#e8eaf8); }
-  .dual-col { display:grid; grid-template-columns:1fr 1fr; gap:8px; padding:10px 16px 0; }
-  .dual-card { background:#fff; border:1px solid #edddd5; border-radius:14px; padding:12px 14px; box-shadow:0 2px 8px rgba(0,0,0,.04); }
-  .dual-hdr { font-size:.65rem; color:#a08070; text-transform:uppercase; letter-spacing:.1em; margin-bottom:8px; font-weight:600; }
-  .dual-row { display:flex; justify-content:space-between; align-items:baseline; margin-bottom:5px; }
-  .dual-lbl { font-size:.62rem; color:#b0a090; }
-  .dual-val { font-family:'Playfair Display',serif; font-size:.92rem; font-weight:600; }
+  .cards3 { display:grid; grid-template-columns:repeat(3,1fr); gap:8px; padding:10px 16px 0; }
+  .scard { background:#fff; border:1px solid #edddd5; border-radius:14px; padding:12px 10px; box-shadow:0 2px 8px rgba(0,0,0,.04); display:flex; flex-direction:column; align-items:flex-start; }
+  .sc-lbl { font-size:.6rem; color:#a08070; text-transform:uppercase; letter-spacing:.08em; font-weight:600; margin-bottom:4px; }
+  .sc-val { font-family:'Playfair Display',serif; font-size:1rem; font-weight:700; line-height:1.1; }
+  .sc-sub { font-size:.62rem; color:#b0a090; margin-top:4px; line-height:1.3; }
+  .sc-flip { margin-top:5px; background:linear-gradient(135deg,#f5eaf8,#eaf0f8); border:1px solid #c9a8d4; border-radius:7px; padding:3px 7px; font-size:.6rem; font-weight:700; color:#7a5fa8; cursor:pointer; font-family:inherit; white-space:nowrap; }
   .bud-section-hdr { font-size:.68rem; letter-spacing:.1em; text-transform:uppercase; color:#9a80b0; font-weight:700; margin:14px 0 8px; border-bottom:1px solid #e8ddd5; padding-bottom:6px; }
   .btn-row { gap: 8px; }
   .bsave, .bcancel { padding: 11px 10px; font-size: .82rem; }
@@ -639,18 +639,24 @@ body{background:#f5f0eb;font-family:'Inter',sans-serif;color:#4a3f35}
 </div>
 
 <!-- SUMMARY CARDS -->
-<div class="dual-col">
-  <div class="dual-card">
-    <div class="dual-hdr">💵 Dólares</div>
-    <div class="dual-row"><span class="dual-lbl">↑ Ingresos</span><span class="dual-val cg" id="c-usd-in">$0.00</span></div>
-    <div class="dual-row"><span class="dual-lbl">↓ Gastos</span><span class="dual-val cr" id="c-usd-out">$0.00</span></div>
-    <div style="border-top:1px solid #f0e8e0;margin-top:4px;padding-top:6px" class="dual-row"><span class="dual-lbl">Balance</span><span class="dual-val" id="c-usd-bal">$0.00</span></div>
+<div class="cards3">
+  <div class="scard">
+    <div class="sc-lbl">↑ Ingresos</div>
+    <div class="sc-val cg" id="c-in">$0.00</div>
+    <div class="sc-sub" id="c-in-sub">$0 COP</div>
+    <button class="sc-flip" id="c-in-flip" onclick="flipSummary('in')">💱</button>
   </div>
-  <div class="dual-card">
-    <div class="dual-hdr">🇨🇴 Pesos</div>
-    <div class="dual-row"><span class="dual-lbl">↑ Ingresos</span><span class="dual-val cg" id="c-cop-in">$0</span></div>
-    <div class="dual-row"><span class="dual-lbl">↓ Gastos</span><span class="dual-val cr" id="c-cop-out">$0</span></div>
-    <div style="border-top:1px solid #f0e8e0;margin-top:4px;padding-top:6px" class="dual-row"><span class="dual-lbl">Balance</span><span class="dual-val" id="c-cop-bal">$0</span></div>
+  <div class="scard">
+    <div class="sc-lbl">↓ Gastos</div>
+    <div class="sc-val cr" id="c-out">$0.00</div>
+    <div class="sc-sub" id="c-out-sub">$0 COP</div>
+    <button class="sc-flip" id="c-out-flip" onclick="flipSummary('out')">💱</button>
+  </div>
+  <div class="scard">
+    <div class="sc-lbl">Balance</div>
+    <div class="sc-val" id="c-bal">$0.00</div>
+    <div class="sc-sub" id="c-bal-sub">$0 COP</div>
+    <button class="sc-flip" id="c-bal-flip" onclick="flipSummary('bal')">💱</button>
   </div>
 </div>
 <div class="cards2">
@@ -2665,6 +2671,26 @@ function openPayDebt(id) {
   if (el) el.classList.toggle('hidden');
 }
 // setPayCur removed — replaced by flipPayCur
+function flipSummary(id) {
+  const flip = document.getElementById('c-'+id+'-flip');
+  if (!flip) return;
+  flip.dataset.showing = flip.dataset.showing === 'cop' ? 'usd' : 'cop';
+  const d = window._summaryData || {};
+  const map = { in: [d.usdIn,d.copIn,false], out:[d.usdOut,d.copOut,false], bal:[d.usdBal,d.copBal,true] };
+  const [usdAmt, copAmt, isBal] = map[id] || [0,0,false];
+  const el    = document.getElementById('c-'+id);
+  const subEl = document.getElementById('c-'+id+'-sub');
+  if (!el || !subEl) return;
+  const showCOP = flip.dataset.showing === 'cop';
+  if (showCOP) {
+    el.textContent = fCOP(copAmt);
+    subEl.textContent = '≈ ' + fUSD(usdAmt) + ' USD';
+  } else {
+    el.textContent = fUSD(usdAmt);
+    subEl.textContent = '≈ ' + fCOP(copAmt);
+  }
+  if (isBal) el.className = 'sc-val ' + ((showCOP ? copAmt : usdAmt) >= 0 ? 'cp' : 'cn');
+}
 function flipPayCur(type, id) {
   const prefix = type === 'debt' ? 'ipay-debt' : 'ipay-pend';
   const hidden  = document.getElementById(prefix+'-cur-'+id);
@@ -2891,12 +2917,27 @@ function renderCards() {
   const usdBal = usdIn - usdOut;
   const copBal = copIn - copOut;
 
-  const _usdIn  = document.getElementById('c-usd-in');  if(_usdIn)  _usdIn.textContent  = fUSD(usdIn);
-  const _usdOut = document.getElementById('c-usd-out'); if(_usdOut) _usdOut.textContent = fUSD(usdOut);
-  const _usdBal = document.getElementById('c-usd-bal'); if(_usdBal) { _usdBal.textContent = fUSD(usdBal); _usdBal.className = 'dual-val '+(usdBal>=0?'cp':'cn'); }
-  const _copIn  = document.getElementById('c-cop-in');  if(_copIn)  _copIn.textContent  = fCOP(copIn);
-  const _copOut = document.getElementById('c-cop-out'); if(_copOut) _copOut.textContent = fCOP(copOut);
-  const _copBal = document.getElementById('c-cop-bal'); if(_copBal) { _copBal.textContent = fCOP(copBal); _copBal.className = 'dual-val '+(copBal>=0?'cp':'cn'); }
+  // Store for flipSummary
+  window._summaryData = { usdIn, copIn, usdOut, copOut, usdBal, copBal };
+
+  function renderSummaryCard(id, usdAmt, copAmt, isBalance) {
+    const el    = document.getElementById('c-'+id);
+    const subEl = document.getElementById('c-'+id+'-sub');
+    const flip  = document.getElementById('c-'+id+'-flip');
+    if (!el || !subEl) return;
+    const showCOP = flip && flip.dataset.showing === 'cop';
+    if (showCOP) {
+      el.textContent = fCOP(copAmt);
+      subEl.textContent = '≈ ' + fUSD(usdAmt) + ' USD';
+    } else {
+      el.textContent = fUSD(usdAmt);
+      subEl.textContent = '≈ ' + fCOP(copAmt);
+    }
+    if (isBalance) el.className = 'sc-val ' + ((showCOP ? copAmt : usdAmt) >= 0 ? 'cp' : 'cn');
+  }
+  renderSummaryCard('in',  usdIn,  copIn,  false);
+  renderSummaryCard('out', usdOut, copOut, false);
+  renderSummaryCard('bal', usdBal, copBal, true);
 
   // Deudas y pendientes — mostrar por moneda
   const debtRemUSD = state.debts.filter(d=>(d.currency||'USD')==='USD'&&d.paid<d.total).reduce((s,d)=>s+(d.total-d.paid),0);
